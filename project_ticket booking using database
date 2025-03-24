@@ -1,0 +1,83 @@
+import sqlite3
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# Database connection
+def create_database():
+    conn = sqlite3.connect("movie_booking.db")
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS bookings (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        first_name TEXT,
+                        last_name TEXT,
+                        movie_name TEXT,
+                        tickets INTEGER,
+                        email TEXT,
+                        phone TEXT,
+                        total_price REAL)''')
+    conn.commit()
+    conn.close()
+
+# Function to book movie tickets
+def book_ticket():
+    first_name = input("Enter your first name: ")
+    last_name = input("Enter your last name: ")
+    movie_name = input("Enter movie name: ")
+    tickets = int(input("Enter number of tickets: "))
+    email = input("Enter your email: ")
+    phone = input("Enter your phone number: ")
+
+    ticket_price = 200  # Price per ticket
+    total_price = tickets * ticket_price
+    gst = total_price * 0.10  # 10% GST
+    final_price = total_price + gst
+
+    # Save booking details in database
+    conn = sqlite3.connect("movie_booking.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO bookings (first_name, last_name, movie_name, tickets, email, phone, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                   (first_name, last_name, movie_name, tickets, email, phone, final_price))
+    conn.commit()
+    conn.close()
+
+    print("\nBooking Confirmed! Sending email...\n")
+    send_email(first_name, last_name, movie_name, tickets, email, phone, final_price)
+
+# Function to send email
+def send_email(first_name, last_name, movie_name, tickets, email, phone, total_price):
+    sender_email = "your-email@gmail.com"  # Replace with your email
+    sender_password = "your-password"  # Replace with your email app password
+    subject = "Movie Ticket Booking Confirmation"
+
+    body = f"""Hello {first_name} {last_name},
+
+Your booking for '{movie_name}' is confirmed.
+Number of Tickets: {tickets}
+Total Price (incl. 10% GST): ₹{total_price}
+Phone Number: {phone}
+
+Enjoy your movie!
+Thank you for booking with us.
+"""
+
+    msg = MIMEMultipart()
+    msg["From"] = sender_email
+    msg["To"] = email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, email, msg.as_string())
+        server.quit()
+        print("Email sent successfully!")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+# Run the program
+if __name__ == "__main__":
+    create_database()
+    book_ticket()
